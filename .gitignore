@@ -1,0 +1,10 @@
+.DS_Store
+/target/
+target
+.settings/**
+.project
+.classpath
+.tern-project
+.factorypath
+.idea
+bin/
