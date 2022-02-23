@@ -1,0 +1,29 @@
+name: PR to main
+
+on:
+  pull_request:
+    branches: [ main ]
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+jobs:
+  compile:
+    name: Ping
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Get commit SHA
+      id: commit_id
+      run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+    - name: Getbranch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      id: branch_name
+
+    # If none of these files has changed, we assume that the contents of .m2/repository can be fetched from the cache.
+    - name: Ping pong
+      run: |
+        echo 'PR to main, branch: ${{ steps.branch_name.outputs.branch }}, commit_id: ${{ steps.commit_id.outputs.sha_short }}'
+
+

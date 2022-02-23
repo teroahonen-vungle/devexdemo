@@ -1,0 +1,70 @@
+name: Check k8s resources
+
+on:
+  pull_request:
+    branches: [ main ]
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+jobs:
+  compile:
+    name: Check k8s manifests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        overlay: ['dev','prod-eu-1']
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Kubeval
+      uses: stefanprodan/kube-tools@v1
+      with:
+        kubectl: 1.22.0
+        kustomize: 4.4.1
+        helmv3: 3.7.2
+        kubeseal: 0.16.0
+        kubeval: v0.16.1
+        conftest: 0.28.3
+        kubeconform: 0.4.12
+        command: |
+            echo "Run conftest"
+            mkdir manifests-${{ matrix.overlay }}
+            kustomize build -o ./manifests-${{ matrix.overlay }} k8s/overlays/${{ matrix.overlay }}  | conftest test -p k8s/base.rego -
+
+    - name: kube-linter
+      if: always()
+      uses: stackrox/kube-linter-action@v1.0.4
+      with:
+        # Directory or file to scan
+        directory: manifests-${{ matrix.overlay }}
+        # Path to config file
+        config: k8s/kube-linter.yaml
+        # Output format. Allowed values: sarif, plain, json. Default: "plain"
+        format: plain
+        # Filename to store output. File will be overwritten if it exists. Default: "kubelinter.log"
+        output-file: kubelinter-${{ matrix.overlay }}.log
+        # Version of kube-linter to use. E.g. "0.2.4". Default: "latest"
+        # version: # optional, default is latest
+
+    - name: Read package.json
+      if: always()
+      id: linter-output
+      uses: juliangruber/read-file-action@v1
+      with:
+        path: ./kubelinter-${{ matrix.overlay }}.log
+
+
+    - name: Create an issue
+      if: always()
+      uses: actions-ecosystem/action-create-issue@v1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        title: kube-linter results for ${{ matrix.overlay }}
+        body: |
+          ## kube-linter results for ${{ matrix.overlay }}
+
+          ${{ steps.linter-output.outputs.content }}
+
+        labels: |
+          kube-linter
+          ${{ matrix.overlay }}
+
