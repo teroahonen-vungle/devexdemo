@@ -22,7 +22,7 @@ jobs:
         java-version: 11
    
     - name: Compile & Package
-      run: mvn -ntp --skipTest -B package
+      run: mvn -ntp -DskipTests -B package
   
   unittest:
     name: Unit tests
